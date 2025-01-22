@@ -25,6 +25,7 @@ name = "bash-pinyin-completion-rs"
 version = "0.1.0"
 dependencies = [
  "ib-pinyin",
+ "regex",
 ]
 
 [[package]]

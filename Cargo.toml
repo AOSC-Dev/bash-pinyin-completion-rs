@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 ib-pinyin = "0.2.5"
+regex = "1.11.1"
