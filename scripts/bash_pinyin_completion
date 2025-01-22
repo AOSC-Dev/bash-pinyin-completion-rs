@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+# Load bash-completion if not loaded
+# [ -f /usr/share/bash-completion/bash_completion ] && \
+#     . /usr/share/bash-completion/bash_completion
+
+# Detect bash-completion
+if ! declare -F _comp_compgen_filedir &>/dev/null; then
+    echo "No function _comp_compgen_filedir found. Please install bash-completion first."
+    return
+fi
+
+eval "function __bak_comp_compgen_filedir() { $(declare -f _comp_compgen_filedir | tail -n +2) }"
+
+# replace _comp_compgen_filedir
+_comp_compgen_filedir() {
+    __bak_comp_compgen_filedir "$@"
+
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+
+    # ignore empty
+    [ -z "$cur" ] && return
+
+    local -a pinyin_matches=()
+    while IFS= read -r line; do
+        pinyin_matches+=( "$line" )
+    done < <( <script_path> "$cur" 2>/dev/null )
+
+    COMPREPLY+=( "${pinyin_matches[@]}" )
+}

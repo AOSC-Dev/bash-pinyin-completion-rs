@@ -1,0 +1,7 @@
+[package]
+name = "bash-pinyin-completion-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ib-pinyin = "0.2.5"
