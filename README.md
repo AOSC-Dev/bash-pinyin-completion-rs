@@ -1,4 +1,4 @@
-# bash-completion-pinyin-rs
+# bash-pinyin-completion-rs
 Simple completion script for pinyin, written in rust. 
 
 ## Installation
