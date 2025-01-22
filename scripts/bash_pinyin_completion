@@ -24,7 +24,7 @@ _comp_compgen_filedir() {
     local -a pinyin_matches=()
     while IFS= read -r line; do
         pinyin_matches+=( "$line" )
-    done < <( <script_path> "$cur" 2>/dev/null )
+    done < <( bash-pinyin-completion-rs "$cur" 2>/dev/null )
 
     COMPREPLY+=( "${pinyin_matches[@]}" )
 }
