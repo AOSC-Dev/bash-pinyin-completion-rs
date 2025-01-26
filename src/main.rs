@@ -1,4 +1,5 @@
 use ib_pinyin::{matcher::PinyinMatcher, pinyin::PinyinNotation};
+use std::io::{BufRead, BufReader};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -10,26 +11,17 @@ fn main() {
 
     let input: &str = &args[1];
     let matcher = PinyinMatcher::builder(input)
-    .pinyin_notations(PinyinNotation::Ascii | PinyinNotation::AsciiFirstLetter)
-    .build();
+        .pinyin_notations(PinyinNotation::Ascii | PinyinNotation::AsciiFirstLetter)
+        .build();
 
     let han_re = regex::Regex::new(r"\p{Han}").unwrap();
 
-    let mut results: Vec<String> = Vec::new();
-    // Read current location
-    if let Ok(entries) = std::fs::read_dir(".") {
-        for entry in entries.flatten() {
-                let path = entry.path();
-                if let Some(file_name) = path.file_name() {
-                    if let Some(file_name_str) = file_name.to_str() {
-                        if matcher.is_match(file_name_str) && han_re.is_match(file_name_str) {
-                            results.push(file_name_str.to_string());
-                        }
-                    }
-                }
+    let stdin = std::io::stdin();
+    let reader = BufReader::new(stdin.lock());
+    for line_result in reader.lines() {
+            let candidate = line_result.unwrap().trim_end().to_string();
+            if han_re.is_match(&candidate) && matcher.is_match(&candidate) {
+                println!("{}", candidate);
             }
-        }
-        for result in results {
-            println!("{}", result);
         }
     }

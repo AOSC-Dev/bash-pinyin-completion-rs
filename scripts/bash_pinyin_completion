@@ -21,10 +21,61 @@ _comp_compgen_filedir() {
     # ignore empty
     [ -z "$cur" ] && return
 
-    local -a pinyin_matches=()
-    while IFS= read -r line; do
-        pinyin_matches+=( "$line" )
-    done < <( bash-pinyin-completion-rs "$cur" 2>/dev/null )
 
-    COMPREPLY+=( "${pinyin_matches[@]}" )
+    local dirpart="$(dirname -- "$cur")"
+    local basepart="$(basename -- "$cur")"
+
+    [[ "$dirpart" == "." && "$cur" != */* ]] && dirpart=""
+
+    local savedPWD="$PWD"
+    local resolved_dir
+    local compgen_opts=(-f)
+    [[ "${1-}" == -d ]] && compgen_opts=(-d)
+
+    if [[ -n "$dirpart" ]]; then
+        resolved_dir="$(realpath -- "$dirpart" 2>/dev/null)"
+        if [[ -d "$resolved_dir" ]]; then
+            cd -- "$resolved_dir" 2>/dev/null || return
+        else
+            cd "$savedPWD" || return
+            return
+        fi
+    fi
+
+    local -a pinyin_matched
+    mapfile -t pinyin_matched < <(
+        compgen "${compgen_opts[@]}" -- "" | while IFS= read -r line; do
+            if [[ "${compgen_opts[0]}" == -d ]]; then
+                printf "%s/\n" "${line%%/}"
+            else
+                if [ -d "$line" ]; then
+                    printf "%s/\n" "${line%%/}"
+                else
+                    printf "%s\n" "$line"
+                fi
+            fi
+        done | bash-pinyin-completion-rs "$basepart" 2>/dev/null
+    )
+
+    if [[ -n "$dirpart" ]]; then
+        for i in "${!pinyin_matched[@]}"; do
+            pinyin_matched[$i]="${dirpart}/${pinyin_matched[$i]}"
+        done
+    fi
+
+    cd "$savedPWD" || return
+
+    # merge result
+    local -a old_candidates=("${COMPREPLY[@]}")
+    COMPREPLY=("${old_candidates[@]}" "${pinyin_matched[@]}")
+
+    # remove dup
+    IFS=$'\n' read -r -d '' -a COMPREPLY < <(
+        printf '%s\n' "${COMPREPLY[@]}" | awk '!seen[$0]++' | sort
+    )
+
+    # fix space postfix
+    if ((${#COMPREPLY[@]} == 1)) && [[ ${COMPREPLY[0]} != */ ]]; then
+        compopt -o nospace 2>/dev/null
+    fi
 }
