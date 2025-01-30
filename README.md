@@ -16,6 +16,12 @@ Ensure that `bash-completion` and rust toolchains(cargo, etc.) are installed cor
 bash scripts/install_completion.sh
 ```
 
+And add these to your `.bashrc` file:
+```bash
+bind 'set show-all-if-ambiguous on'
+bind 'TAB:menu-complete'
+```
+
 ## Requirements
 - bash-completion
 - rust toolchains
