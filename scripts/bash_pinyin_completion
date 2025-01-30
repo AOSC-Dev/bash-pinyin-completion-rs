@@ -43,19 +43,22 @@ _comp_compgen_filedir() {
     fi
 
     local -a pinyin_matched
-    mapfile -t pinyin_matched < <(
-        compgen "${compgen_opts[@]}" -- "" | while IFS= read -r line; do
-            if [[ "${compgen_opts[0]}" == -d ]]; then
-                printf "%s/\n" "${line%%/}"
-            else
+    if [[ "${compgen_opts[0]}" == -d ]]; then
+        mapfile -t pinyin_matched < <(
+            compgen -d -- |
+            bash-pinyin-completion-rs "$basepart" 2>/dev/null
+            )
+    else
+        mapfile -t pinyin_matched < <(
+            compgen -f -- | while IFS= read -r line; do
                 if [ -d "$line" ]; then
                     printf "%s/\n" "${line%%/}"
                 else
                     printf "%s\n" "$line"
                 fi
-            fi
-        done | bash-pinyin-completion-rs "$basepart" 2>/dev/null
-    )
+            done | bash-pinyin-completion-rs "$basepart" 2>/dev/null
+        )
+    fi
 
     if [[ -n "$dirpart" ]]; then
         for i in "${!pinyin_matched[@]}"; do
