@@ -46,15 +46,19 @@ _comp_compgen_filedir() {
     if [[ "${compgen_opts[0]}" == -d ]]; then
         mapfile -t pinyin_matched < <(
             compgen -d -- |
+            grep -v '^\.\{1,2\}$' |  # Exclude . and ..
             bash-pinyin-completion-rs "$basepart" 2>/dev/null
             )
     else
         mapfile -t pinyin_matched < <(
-            compgen -f -- | while IFS= read -r line; do
-                if [ -d "$line" ]; then
-                    printf "%s/\n" "${line%%/}"
-                else
-                    printf "%s\n" "$line"
+            compgen -f -- |
+            while IFS= read -r line; do
+                if [[ "$line" != "." && "$line" != ".." ]]; then # Exclude . and ..
+                    if [ -d "$line" ]; then
+                        printf "%s/\n" "${line%%/}"
+                    else
+                        printf "%s\n" "$line"
+                    fi
                 fi
             done | bash-pinyin-completion-rs "$basepart" 2>/dev/null
         )
@@ -71,11 +75,7 @@ _comp_compgen_filedir() {
     # merge result
     local -a old_candidates=("${COMPREPLY[@]}")
     COMPREPLY=("${old_candidates[@]}" "${pinyin_matched[@]}")
-
-    # remove dup
-    IFS=$'\n' read -r -d '' -a COMPREPLY < <(
-        printf '%s\n' "${COMPREPLY[@]}" | awk '!seen[$0]++' | sort
-    )
+    COMPREPLY=($(printf "%s\n" "${COMPREPLY[@]}" | awk '!seen[$0]++'))
 
     # fix space postfix
     if ((${#COMPREPLY[@]} == 1)) && [[ ${COMPREPLY[0]} != */ ]]; then
