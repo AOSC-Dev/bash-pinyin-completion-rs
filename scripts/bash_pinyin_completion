@@ -11,11 +11,20 @@ if ! declare -F _comp_compgen_filedir &>/dev/null; then
 fi
 
 eval "function __bak_comp_compgen_filedir() { $(declare -f _comp_compgen_filedir | tail -n +2) }"
+eval "function __bak_comp_compgen_filedir_xspec() { $(declare -f _comp_compgen_filedir_xspec | tail -n +2) }"
 
 # replace _comp_compgen_filedir
 _comp_compgen_filedir() {
     __bak_comp_compgen_filedir "$@"
+    _pinyin_completion "$@"
+}
 
+_comp_compgen_filedir_xspec() {
+    __bak_comp_compgen_filedir_xspec "$@"
+    _pinyin_completion "$@"
+}
+
+_pinyin_completion() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
 
     # ignore empty
