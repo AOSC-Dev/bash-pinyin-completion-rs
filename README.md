@@ -1,5 +1,5 @@
 # bash-pinyin-completion-rs
-Completion script for pinyin, macther based on [IbPinyinLib](https://github.com/Chaoses-Ib/IbPinyinLib)
+Completion script for pinyin, matcher based on [IbPinyinLib](https://github.com/Chaoses-Ib/IbPinyinLib)
 
 ## Installation
 **Clone the project**
