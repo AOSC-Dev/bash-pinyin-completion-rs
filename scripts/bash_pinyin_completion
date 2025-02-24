@@ -84,7 +84,17 @@ _pinyin_completion() {
     # merge result
     local -a old_candidates=("${COMPREPLY[@]}")
     COMPREPLY=("${old_candidates[@]}" "${pinyin_matched[@]}")
-    mapfile -t COMPREPLY < <(printf "%s\n" "${COMPREPLY[@]}" | awk '!seen[$0]++')
+
+    # mapfile -t COMPREPLY < <(printf "%s\n" "${COMPREPLY[@]}" | awk '!seen[$0]++')
+    declare -A seen
+    local -a unique_compreply=()
+    for item in "${COMPREPLY[@]}"; do
+        if [[ -z "${seen[$item]}" ]]; then
+            seen["$item"]=1
+            unique_compreply+=( "$item" )
+        fi
+    done
+    COMPREPLY=( "${unique_compreply[@]}" )
 
     # fix space postfix
     if ((${#COMPREPLY[@]} == 1)) && [[ ${COMPREPLY[0]} != */ ]]; then
