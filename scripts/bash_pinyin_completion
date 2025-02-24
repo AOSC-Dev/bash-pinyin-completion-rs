@@ -84,7 +84,7 @@ _pinyin_completion() {
     # merge result
     local -a old_candidates=("${COMPREPLY[@]}")
     COMPREPLY=("${old_candidates[@]}" "${pinyin_matched[@]}")
-    COMPREPLY=($(printf "%s\n" "${COMPREPLY[@]}" | awk '!seen[$0]++'))
+    mapfile -t COMPREPLY < <(printf "%s\n" "${COMPREPLY[@]}" | awk '!seen[$0]++')
 
     # fix space postfix
     if ((${#COMPREPLY[@]} == 1)) && [[ ${COMPREPLY[0]} != */ ]]; then
