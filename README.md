@@ -1,5 +1,5 @@
 # bash-pinyin-completion-rs
-Simple completion script for pinyin, written in rust. 
+Completion script for pinyin, macther based on [IbPinyinLib](https://github.com/Chaoses-Ib/IbPinyinLib)
 
 ## Installation
 **Clone the project**

@@ -1,1 +1,3 @@
+# Ignore test and build folder.
 /target
+/test
