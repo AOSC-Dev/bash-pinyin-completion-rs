@@ -55,19 +55,16 @@ _pinyin_completion() {
     if [[ "${compgen_opts[0]}" == -d ]]; then
         mapfile -t pinyin_matched < <(
             compgen -d -- |
-            grep -v '^\.\{1,2\}$' |  # Exclude . and ..
             bash-pinyin-completion-rs "$basepart" 2>/dev/null
             )
     else
         mapfile -t pinyin_matched < <(
             compgen -f -- |
             while IFS= read -r line; do
-                if [[ "$line" != "." && "$line" != ".." ]]; then # Exclude . and ..
-                    if [ -d "$line" ]; then
-                        printf "%s/\n" "${line%%/}"
-                    else
-                        printf "%s\n" "$line"
-                    fi
+                if [ -d "$line" ]; then
+                    printf "%s/\n" "${line%%/}"
+                else
+                    printf "%s\n" "$line"
                 fi
             done | bash-pinyin-completion-rs "$basepart" 2>/dev/null
         )
