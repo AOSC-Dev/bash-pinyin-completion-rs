@@ -9,6 +9,13 @@ if [ ! -d /etc/bash_completion.d ]; then
     exit 1
 fi
 
+# Install debug version if --debug is specified
+if [ "$1" = "--debug" ]; then
+    echo "Installing debug version..."
+    sudo cp scripts/bash_pinyin_completion_debug /etc/bash_completion.d/bash_pinyin_completion
+    exit 0
+fi
+
 # Install or upgrade the binary
 if [ -f /usr/bin/bash-pinyin-completion-rs ]; then
     echo "The binary /usr/bin/bash-pinyin-completion-rs already exists. Upgrading..."
