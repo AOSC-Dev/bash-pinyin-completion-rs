@@ -74,8 +74,14 @@ _pinyin_completion() {
     fi
 
     if [[ -n "$dirpart" ]]; then
+        local sep="/"
+        # dirpart is root
+        if [[ "$dirpart" == "/" ]]; then
+            sep=""
+        fi
+        
         for i in "${!pinyin_matched[@]}"; do
-            pinyin_matched[$i]="${dirpart}/${pinyin_matched[$i]}"
+            pinyin_matched[$i]="${dirpart}${sep}${pinyin_matched[$i]}"
         done
     fi
 
