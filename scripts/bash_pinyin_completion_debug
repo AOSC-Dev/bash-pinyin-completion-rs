@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+
+DEBUG_LOG="/tmp/pinyin_completion_debug.log"
+rm -f "$DEBUG_LOG"
+touch "$DEBUG_LOG"
+
+debug() {
+    echo "[$(date +%T.%N)] $*" >> "$DEBUG_LOG"
+}
+debug "Debug Session:"
+
+# Load bash-completion if not loaded
+# [ -f /usr/share/bash-completion/bash_completion ] && \
+#     . /usr/share/bash-completion/bash_completion
+
+# Detect bash-completion
+if ! declare -F _comp_compgen_filedir &>/dev/null; then
+    echo "No function _comp_compgen_filedir found. Please install bash-completion first."
+    exit 1
+fi
+
+eval "function __bak_comp_compgen_filedir() { $(declare -f _comp_compgen_filedir | tail -n +2) }"
+eval "function __bak_comp_compgen_filedir_xspec() { $(declare -f _comp_compgen_filedir_xspec | tail -n +2) }"
+
+# replace _comp_compgen_filedir
+_comp_compgen_filedir() {
+    debug "Pre _comp_compgen_filedir: $*"
+    __bak_comp_compgen_filedir "$@"
+    debug "Original COMPREPLY: ${COMPREPLY[*]}"
+    _pinyin_completion "$@"
+    debug "Post COMPREPLY: ${COMPREPLY[*]}"
+}
+
+_comp_compgen_filedir_xspec() {
+    debug "Pre _comp_compgen_filedir: $*"
+    __bak_comp_compgen_filedir_xspec "$@"
+    debug "Original COMPREPLY: ${COMPREPLY[*]}"
+    _pinyin_completion "$@"
+    debug "Post COMPREPLY: ${COMPREPLY[*]}"
+}
+
+_pinyin_completion() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+
+    # ignore empty
+    [ -z "$cur" ] && return
+
+
+    local dirpart="$(dirname -- "$cur")"
+    local basepart="$(basename -- "$cur")"
+
+    [[ "$dirpart" == "." && "$cur" != */* ]] && dirpart=""
+
+    local savedPWD="$PWD"
+    local resolved_dir
+    local compgen_opts=(-f)
+    [[ "${1-}" == -d ]] && compgen_opts=(-d)
+
+    if [[ -n "$dirpart" ]]; then
+        resolved_dir="$(realpath -- "$dirpart" 2>/dev/null)"
+        if [[ -d "$resolved_dir" ]]; then
+            cd -- "$resolved_dir" 2>/dev/null || return
+        else
+            cd "$savedPWD" || return
+            return
+        fi
+    fi
+
+    local -a pinyin_matched
+    if [[ "${compgen_opts[0]}" == -d ]]; then
+        mapfile -t pinyin_matched < <(
+            compgen -d -- |
+            bash-pinyin-completion-rs "$basepart" 2>/dev/null
+            )
+    else
+        mapfile -t pinyin_matched < <(
+            compgen -f -- |
+            while IFS= read -r line; do
+                if [ -d "$line" ]; then
+                    printf "%s/\n" "${line%%/}"
+                else
+                    printf "%s\n" "$line"
+                fi
+            done | bash-pinyin-completion-rs "$basepart" 2>/dev/null
+        )
+    fi
+
+    if [[ -n "$dirpart" ]]; then
+        local sep="/"
+        # dirpart is root
+        if [[ "$dirpart" == "/" ]]; then
+            sep=""
+        fi
+        
+        for i in "${!pinyin_matched[@]}"; do
+            pinyin_matched[$i]="${dirpart}${sep}${pinyin_matched[$i]}"
+        done
+    fi
+
+    cd "$savedPWD" || return
+
+    # merge result
+    local -a old_candidates=("${COMPREPLY[@]}")
+    COMPREPLY=("${old_candidates[@]}" "${pinyin_matched[@]}")
+
+    # mapfile -t COMPREPLY < <(printf "%s\n" "${COMPREPLY[@]}" | awk '!seen[$0]++')
+    declare -A seen
+    local -a unique_compreply=()
+    for item in "${COMPREPLY[@]}"; do
+        if [[ -z "${seen[$item]}" ]]; then
+            seen["$item"]=1
+            unique_compreply+=( "$item" )
+        fi
+    done
+    COMPREPLY=( "${unique_compreply[@]}" )
+
+    # fix space postfix
+    if ((${#COMPREPLY[@]} == 1)) && [[ ${COMPREPLY[0]} != */ ]]; then
+        compopt -o nospace 2>/dev/null
+    fi
+}
