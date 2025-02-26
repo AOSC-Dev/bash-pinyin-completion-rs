@@ -68,6 +68,9 @@ _pinyin_completion() {
                 fi
             done | bash-pinyin-completion-rs "$basepart" 2>/dev/null
         )
+        if [ ${#pinyin_matched[@]} -ne 0 ]; then
+            compopt -o filenames 2>/dev/null
+        fi
     fi
 
     if [[ -n "$dirpart" ]]; then
@@ -99,8 +102,8 @@ _pinyin_completion() {
     done
     COMPREPLY=( "${unique_compreply[@]}" )
 
-    # fix space postfix
-    if ((${#COMPREPLY[@]} == 1)) && [[ ${COMPREPLY[0]} != */ ]]; then
-        compopt -o nospace 2>/dev/null
-    fi
+    # # fix space postfix
+    # if ((${#COMPREPLY[@]} == 1)) && [[ ${COMPREPLY[0]} != */ ]]; then
+    #     compopt -o nospace 2>/dev/null
+    # fi
 }
