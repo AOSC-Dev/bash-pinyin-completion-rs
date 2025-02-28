@@ -30,9 +30,15 @@ _pinyin_completion() {
     # ignore empty
     [ -z "$cur" ] && return
 
+     _expand || return 0
 
-    local dirpart="$(dirname -- "$cur")"
-    local basepart="$(basename -- "$cur")"
+    if [[ "${cur:0:1}" == "'" || "${cur:0:1}" == "\"" ]]; then
+        local dirpart="$(dirname -- "${cur:1}")"
+        local basepart="$(basename -- "${cur:1}")"
+    else
+        local dirpart="$(dirname -- "$cur")"
+        local basepart="$(basename -- "$cur")"
+    fi
 
     # realpath resolve current path as ".", if user did not enter "./" then ignore.
     [[ "$dirpart" == "." && "${cur:0:2}" != "./" ]] && dirpart=""
