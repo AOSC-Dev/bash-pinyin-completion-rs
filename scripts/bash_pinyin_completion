@@ -34,7 +34,8 @@ _pinyin_completion() {
     local dirpart="$(dirname -- "$cur")"
     local basepart="$(basename -- "$cur")"
 
-    [[ "$dirpart" == "." && "$cur" != */* ]] && dirpart=""
+    # realpath resolve current path as ".", if user did not enter "./" then ignore.
+    [[ "$dirpart" == "." && "${cur:0:2}" != "./" ]] && dirpart=""
 
     local savedPWD="$PWD"
     local resolved_dir
