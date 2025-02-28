@@ -67,13 +67,7 @@ _pinyin_completion() {
     else
         mapfile -t pinyin_matched < <(
             compgen -f -- |
-            while IFS= read -r line; do
-                if [ -d "$line" ]; then
-                    printf "%s/\n" "${line%%/}"
-                else
-                    printf "%s\n" "$line"
-                fi
-            done | bash-pinyin-completion-rs "$basepart" 2>/dev/null
+            bash-pinyin-completion-rs "$basepart" 2>/dev/null
         )
         if [ ${#pinyin_matched[@]} -ne 0 ]; then
             compopt -o filenames 2>/dev/null
