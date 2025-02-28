@@ -16,10 +16,14 @@ Ensure that `bash-completion` and rust toolchains(cargo, etc.) are installed cor
 bash scripts/install_completion.sh
 ```
 
-And add these to your `.bashrc` file:
-```bash
-bind 'set show-all-if-ambiguous on'
-bind 'TAB:menu-complete'
+For better experience, add these to your inputrc (/etc/inputrc, ~/.inputrc):
+```
+set show-all-if-ambiguous on
+set menu-complete-display-prefix on
+TAB: menu-complete
+set colored-completion-prefix on
+set colored-stats on
+"\e[Z": menu-complete-backward
 ```
 
 ## Requirements
