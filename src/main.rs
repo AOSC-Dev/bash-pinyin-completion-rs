@@ -8,13 +8,13 @@ fn main() {
         eprintln!("Usage: {} <pinyin>", args[0]);
         std::process::exit(1);
     }
+    let han_re = regex::Regex::new(r"\p{Han}").unwrap();
 
     let input: &str = &args[1];
+    if han_re.is_match(input) {return};
     let matcher = PinyinMatcher::builder(input)
         .pinyin_notations(PinyinNotation::Ascii | PinyinNotation::AsciiFirstLetter)
         .build();
-
-    let han_re = regex::Regex::new(r"\p{Han}").unwrap();
 
     let stdin = std::io::stdin();
     let reader = BufReader::new(stdin.lock());
