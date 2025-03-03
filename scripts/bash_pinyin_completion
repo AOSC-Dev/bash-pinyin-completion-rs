@@ -12,6 +12,8 @@ fi
 
 eval "function __bak_comp_compgen_filedir() { $(declare -f _comp_compgen_filedir | tail -n +2) }"
 eval "function __bak_comp_compgen_filedir_xspec() { $(declare -f _comp_compgen_filedir_xspec | tail -n +2) }"
+eval "function __bak_comp_complete_minimal() { $(declare -f _comp_complete_minimal | tail -n +2) }"
+eval "function __bak_comp_expand_glob() { $(declare -f _comp_expand_glob | tail -n +2) }"
 
 # replace _comp_compgen_filedir
 _comp_compgen_filedir() {
@@ -21,6 +23,16 @@ _comp_compgen_filedir() {
 
 _comp_compgen_filedir_xspec() {
     __bak_comp_compgen_filedir_xspec "$@"
+    _pinyin_completion "$@"
+}
+
+_comp_complete_minimal() { 
+    __bak_comp_complete_minimal "$@"
+    _pinyin_completion "$@"
+}
+
+_comp_expand_glob() {
+    __bak_comp_expand_glob "$@"
     _pinyin_completion "$@"
 }
 
