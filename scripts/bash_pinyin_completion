@@ -44,6 +44,14 @@ _pinyin_completion() {
 
     local cur="${COMP_WORDS[COMP_CWORD]}"
 
+    # Detect "~/"
+    local homeStart
+    if [ "${cur:0:2}" = "~/" ]; then
+        homeStart=true
+    else
+        homeStart=false
+    fi
+
     # ignore empty
     [ -z "$cur" ] && return
 
@@ -120,8 +128,14 @@ _pinyin_completion() {
     done
     COMPREPLY=( "${unique_compreply[@]}" )
 
-    # # fix space postfix
-    # if ((${#COMPREPLY[@]} == 1)) && [[ ${COMPREPLY[0]} != */ ]]; then
-    #     compopt -o nospace 2>/dev/null
-    # fi
+    if [[ "$homeStart" == true ]]; then
+        local home="$HOME"
+        for i in "${!COMPREPLY[@]}"; do
+            case "${COMPREPLY[$i]}" in
+                "$home"/*)
+                    COMPREPLY[$i]="~${COMPREPLY[$i]#"$home"}"
+                    ;;
+            esac
+        done
+    fi
 }
