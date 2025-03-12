@@ -37,6 +37,11 @@ _comp_expand_glob() {
 }
 
 _pinyin_completion() {
+    # Check COMP_WORDS existence
+    if [ ${#COMP_WORDS[@]} -eq 0 ] || [ -z "${COMP_CWORD+x}" ]; then
+        return
+    fi
+
     local cur="${COMP_WORDS[COMP_CWORD]}"
 
     # ignore empty
