@@ -1,8 +1,11 @@
 # bash-pinyin-completion-rs
+
 Completion script for pinyin, matcher based on [IbPinyinLib](https://github.com/Chaoses-Ib/IbPinyinLib)
 
 ## Installation
+
 **Clone the project**
+
 ```bash
 git clone https://github.com/wxiwnd/bash-pinyin-completion-rs
 cd bash-pinyin-completion-rs
@@ -17,6 +20,7 @@ bash scripts/install_completion.sh
 ```
 
 For better experience, add these to your inputrc (/etc/inputrc, ~/.inputrc):
+
 ```
 set show-all-if-ambiguous on
 set menu-complete-display-prefix on
@@ -27,6 +31,7 @@ set colored-stats on
 ```
 
 ## Requirements
+
 - bash-completion
 - rust toolchains
 
@@ -66,7 +71,9 @@ export PINYIN_COMP_MODE="Quanpin,ShuangpinXiaohe"
   if multiple Shuangpin schemas are enabled, only the first one will take effect.
 
 ## Bug report
+
 If you encounter any issues, please report them on the GitHub issues page.
 
 ## License
+
 This project is licensed under the GPLv3 License. See the [LICENSE](./LICENSE) file for details.
