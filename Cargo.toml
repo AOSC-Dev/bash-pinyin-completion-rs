@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ib-pinyin = "0.2.5"
+ib-pinyin = "0.3"
 regex = "1.11.1"
 
 [dev-dependencies]
