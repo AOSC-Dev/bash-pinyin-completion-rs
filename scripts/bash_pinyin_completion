@@ -41,12 +41,15 @@ _comp_compgen__call_builtin() {
 
 # Function to add completion results
 _add_completion() {
+    local cur
+
+    eval "cur=${_cur}"
+    
     # Check if we have the necessary variables
     if [[ -z "${_cur-}" ]] || [[ -z "${_var-}" ]]; then
         return
     fi
     
-    local cur="$_cur"
     local var_name="$_var"
     
     # Skip empty
