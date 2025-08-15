@@ -1,78 +1,82 @@
 #!/usr/bin/env bash
 
-# Load bash-completion if not loaded
-# [ -f /usr/share/bash-completion/bash_completion ] && \
-#     . /usr/share/bash-completion/bash_completion
+# Anthon Open Source Community 
+# Pinyin Completion Hook for Bash-Completion
 
 # Detect bash-completion
-if ! declare -F _comp_compgen_filedir &>/dev/null; then
-    echo "No function _comp_compgen_filedir found. Please install bash-completion first."
+if ! declare -F _comp_compgen__call_builtin &>/dev/null; then
+    echo "No function _comp_compgen__call_builtin found. Please install bash-completion first."
     exit 1
 fi
 
-eval "function __bak_comp_compgen_filedir() { $(declare -f _comp_compgen_filedir | tail -n +2) }"
-eval "function __bak_comp_compgen_filedir_xspec() { $(declare -f _comp_compgen_filedir_xspec | tail -n +2) }"
-eval "function __bak_comp_complete_minimal() { $(declare -f _comp_complete_minimal | tail -n +2) }"
-eval "function __bak_comp_expand_glob() { $(declare -f _comp_expand_glob | tail -n +2) }"
+# Backup the original function
+eval "function __bak_comp_compgen__call_builtin() { $(declare -f _comp_compgen__call_builtin | tail -n +2) }"
 
-# replace _comp_compgen_filedir
-_comp_compgen_filedir() {
-    __bak_comp_compgen_filedir "$@"
-    _pinyin_completion "$@"
+
+_comp_compgen__call_builtin() {
+    __bak_comp_compgen__call_builtin "$@"
+    local original_result=$?
+    
+    # Only add pinyin completion for file/directory completions
+    local is_file_completion=false
+    local compgen_args=("$@")
+    
+    # Check for file completion indicators
+    for arg in "${compgen_args[@]}"; do
+        case "$arg" in
+            -f|-d|-A|file|directory)
+                is_file_completion=true
+                break
+                ;;
+        esac
+    done
+    
+    # If this looks like file completion, add pinyin matches
+    if [[ "$is_file_completion" == true ]]; then
+        _add_completion "$@"
+    fi
+    
+    return $original_result
 }
 
-_comp_compgen_filedir_xspec() {
-    __bak_comp_compgen_filedir_xspec "$@"
-    _pinyin_completion "$@"
-}
-
-_comp_complete_minimal() { 
-    __bak_comp_complete_minimal "$@"
-    _pinyin_completion "$@"
-}
-
-_comp_expand_glob() {
-    __bak_comp_expand_glob "$@"
-    _pinyin_completion "$@"
-}
-
-_pinyin_completion() {
-    # Check COMP_WORDS existence
-    if [ ${#COMP_WORDS[@]} -eq 0 ] || [ -z "${COMP_CWORD+x}" ]; then
+# Function to add completion results
+_add_completion() {
+    # Check if we have the necessary variables
+    if [[ -z "${_cur-}" ]] || [[ -z "${_var-}" ]]; then
         return
     fi
+    
+    local cur="$_cur"
+    local var_name="$_var"
+    
+    # Skip empty
+    [[ -z "$cur" ]] && return
+    _expand || return 0
 
-    local cur="${COMP_WORDS[COMP_CWORD]}"
-
-    # Detect "~/"
-    local homeStart
-    if [ "${cur:0:2}" = "~/" ]; then
-        homeStart=true
-    else
-        homeStart=false
-    fi
-
-    # ignore empty
-    [ -z "$cur" ] && return
-
-     _expand || return 0
-
+    local dirpart basepart
     if [[ "${cur:0:1}" == "'" || "${cur:0:1}" == "\"" ]]; then
-        local dirpart="$(dirname -- "${cur:1}")"
-        local basepart="$(basename -- "${cur:1}")"
+        dirpart="$(dirname -- "${cur:1}")"
+        basepart="$(basename -- "${cur:1}")"
     else
-        local dirpart="$(dirname -- "$cur")"
-        local basepart="$(basename -- "$cur")"
+        dirpart="$(dirname -- "$cur")"
+        basepart="$(basename -- "$cur")"
     fi
-
-    # realpath resolve current path as ".", if user did not enter "./" then ignore.
+    
     [[ "$dirpart" == "." && "${cur:0:2}" != "./" ]] && dirpart=""
-
+    
     local savedPWD="$PWD"
     local resolved_dir
     local compgen_opts=(-f)
-    [[ "${1-}" == -d ]] && compgen_opts=(-d)
-
+    
+    local is_dir_only=false
+    for arg in "$@"; do
+        if [[ "$arg" == "-d" ]]; then
+            is_dir_only=true
+            compgen_opts=(-d)
+            break
+        fi
+    done
+    
     if [[ -n "$dirpart" ]]; then
         resolved_dir="$(realpath -- "$dirpart" 2>/dev/null)"
         if [[ -d "$resolved_dir" ]]; then
@@ -82,60 +86,50 @@ _pinyin_completion() {
             return
         fi
     fi
-
+    
     local -a pinyin_matched
-    if [[ "${compgen_opts[0]}" == -d ]]; then
+    if [[ "$is_dir_only" == true ]]; then
         mapfile -t pinyin_matched < <(
-            compgen -d -- |
-            bash-pinyin-completion-rs "$basepart" 2>/dev/null
-            )
-    else
-        mapfile -t pinyin_matched < <(
-            compgen -f -- |
+            compgen -d -- 2>/dev/null |
             bash-pinyin-completion-rs "$basepart" 2>/dev/null
         )
-        if [ ${#pinyin_matched[@]} -ne 0 ]; then
-            compopt -o filenames 2>/dev/null
-        fi
+    else
+        mapfile -t pinyin_matched < <(
+            compgen -f -- 2>/dev/null |
+            bash-pinyin-completion-rs "$basepart" 2>/dev/null
+        )
     fi
-
-    if [[ -n "$dirpart" ]]; then
-        local sep="/"
-        # dirpart is root
-        if [[ "$dirpart" == "/" ]]; then
-            sep=""
+    
+    # Restore directory
+    cd "$savedPWD" || return
+    
+    if [[ ${#pinyin_matched[@]} -gt 0 ]]; then
+        if [[ -n "$dirpart" ]]; then
+            local sep="/"
+            [[ "$dirpart" == "/" ]] && sep=""
+            
+            for i in "${!pinyin_matched[@]}"; do
+                pinyin_matched[$i]="${dirpart}${sep}${pinyin_matched[$i]}"
+            done
         fi
         
-        for i in "${!pinyin_matched[@]}"; do
-            pinyin_matched[$i]="${dirpart}${sep}${pinyin_matched[$i]}"
+        
+        local current_results_var="current_results"
+        eval "local -a $current_results_var=(\"\${$var_name[@]}\")"
+        
+        # Merge results and remove duplicates
+        local -a all_results
+        eval "all_results=(\"\${$current_results_var[@]}\" \"\${pinyin_matched[@]}\")"
+        
+        declare -A seen
+        local -a unique_results=()
+        for item in "${all_results[@]}"; do
+            if [[ -z "${seen[$item]}" ]]; then
+                seen["$item"]=1
+                unique_results+=("$item")
+            fi
         done
-    fi
-
-    cd "$savedPWD" || return
-
-    # merge result
-    local -a old_candidates=("${COMPREPLY[@]}")
-    COMPREPLY=("${old_candidates[@]}" "${pinyin_matched[@]}")
-
-    # mapfile -t COMPREPLY < <(printf "%s\n" "${COMPREPLY[@]}" | awk '!seen[$0]++')
-    declare -A seen
-    local -a unique_compreply=()
-    for item in "${COMPREPLY[@]}"; do
-        if [[ -z "${seen[$item]}" ]]; then
-            seen["$item"]=1
-            unique_compreply+=( "$item" )
-        fi
-    done
-    COMPREPLY=( "${unique_compreply[@]}" )
-
-    if [[ "$homeStart" == true ]]; then
-        local home="$HOME"
-        for i in "${!COMPREPLY[@]}"; do
-            case "${COMPREPLY[$i]}" in
-                "$home"/*)
-                    COMPREPLY[$i]="~${COMPREPLY[$i]#"$home"}"
-                    ;;
-            esac
-        done
+        
+        eval "$var_name=(\"\${unique_results[@]}\")"
     fi
 }
