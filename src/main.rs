@@ -55,10 +55,8 @@ fn main() {
         eprintln!("Usage: {} <pinyin>", args[0]);
         std::process::exit(1);
     }
-    let han_re = regex::Regex::new(r"\p{Han}").unwrap();
 
     let input: &str = &args[1];
-    if han_re.is_match(input) {return};
     let notation = parse_pinyin_notation_env();
     let matcher = PinyinMatcher::builder(input)
         .pinyin_notations(notation)
@@ -68,7 +66,7 @@ fn main() {
     let reader = BufReader::new(stdin.lock());
     for line_result in reader.lines() {
             let candidate = line_result.unwrap().trim_end().to_string();
-            if han_re.is_match(&candidate) && matcher.is_match(&candidate) {
+            if matcher.is_match(&candidate) {
                 println!("{}", candidate);
             }
         }
