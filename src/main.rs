@@ -2,6 +2,27 @@ use ib_pinyin::{matcher::PinyinMatcher, pinyin::PinyinNotation};
 use std::env;
 use std::io::{BufRead, BufReader};
 
+fn is_pure_english_path(s: &str) -> bool {
+    // Consider a path "pure English" if every character is within a conservative
+    // ASCII set that bash already handles well: letters, digits, '_', '-', '.', '/', '~'.
+    // We also ignore trailing newlines/spaces (already trimmed).
+    // Require at least one ASCII alphabetic letter so an empty string or just symbols
+    // doesn't get suppressed accidentally.
+    let mut has_alpha = false;
+    for ch in s.chars() {
+        if ch.is_ascii_alphabetic() {
+            has_alpha = true;
+            continue;
+        }
+        if ch.is_ascii_digit() || matches!(ch, '_' | '-' | '.' | '/' | '~') {
+            continue;
+        }
+        // Any other (non ASCII or other punctuation) means it's not pure English.
+        return false;
+    }
+    has_alpha
+}
+
 fn parse_pinyin_notation_env() -> PinyinNotation {
     let env_val = env::var("PINYIN_COMP_MODE").unwrap_or_default();
     let mut notation = PinyinNotation::empty();
@@ -65,9 +86,13 @@ fn main() {
     let stdin = std::io::stdin();
     let reader = BufReader::new(stdin.lock());
     for line_result in reader.lines() {
-            let candidate = line_result.unwrap().trim_end().to_string();
-            if matcher.is_match(&candidate) {
-                println!("{}", candidate);
-            }
+        let candidate = line_result.unwrap().trim_end().to_string();
+        // Ignore Pure English Path
+        if is_pure_english_path(&candidate) {
+            continue;
         }
+        if matcher.is_match(&candidate) {
+            println!("{}", candidate);
+        }
+    }
     }
