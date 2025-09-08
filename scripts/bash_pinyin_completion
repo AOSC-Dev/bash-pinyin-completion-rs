@@ -44,6 +44,8 @@ _add_completion() {
     local cur
 
     eval "cur=${_cur}"
+    # Save original cur (to restore later)
+    local orig_cur="$cur"
     
     # Check if we have the necessary variables
     if [[ -z "${_cur-}" ]] || [[ -z "${_var-}" ]]; then
@@ -110,20 +112,32 @@ _add_completion() {
         if [[ -n "$dirpart" ]]; then
             local sep="/"
             [[ "$dirpart" == "/" ]] && sep=""
-            
             for i in "${!pinyin_matched[@]}"; do
                 pinyin_matched[$i]="${dirpart}${sep}${pinyin_matched[$i]}"
             done
         fi
-        
-        
+
+        local orig_check="$orig_cur"
+        if [[ "$orig_check" == "'"* || "$orig_check" == '"'* ]]; then
+            orig_check="${orig_check:1}"
+        fi
+        if [[ "$orig_check" == ~* ]]; then
+            for i in "${!pinyin_matched[@]}"; do
+                if [[ "${pinyin_matched[$i]}" == "$HOME" ]]; then
+                    pinyin_matched[$i]="~"
+                elif [[ "${pinyin_matched[$i]}" == $HOME/* ]]; then
+                    pinyin_matched[$i]="~/${pinyin_matched[$i]#"$HOME/"}"
+                fi
+            done
+        fi
+
         local current_results_var="current_results"
         eval "local -a $current_results_var=(\"\${$var_name[@]}\")"
         
         # Merge results and remove duplicates
         local -a all_results
         eval "all_results=(\"\${$current_results_var[@]}\" \"\${pinyin_matched[@]}\")"
-        
+
         declare -A seen
         local -a unique_results=()
         for item in "${all_results[@]}"; do
@@ -132,7 +146,7 @@ _add_completion() {
                 unique_results+=("$item")
             fi
         done
-        
+
         eval "$var_name=(\"\${unique_results[@]}\")"
     fi
 }
