@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ib-pinyin = "0.3"
+ib-matcher = { version = "0.4.0", features = ["pinyin"] }
 regex = "1.11.1"
 
 [dev-dependencies]
