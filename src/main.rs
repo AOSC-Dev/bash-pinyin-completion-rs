@@ -1,4 +1,7 @@
-use ib_pinyin::{matcher::PinyinMatcher, pinyin::PinyinNotation};
+use ib_matcher::{
+    matcher::{IbMatcher, PinyinMatchConfig},
+    pinyin::{PinyinNotation},
+};
 use std::env;
 use std::io::{BufRead, BufReader};
 
@@ -79,8 +82,11 @@ fn main() {
 
     let input: &str = &args[1];
     let notation = parse_pinyin_notation_env();
-    let matcher = PinyinMatcher::builder(input)
-        .pinyin_notations(notation)
+    let pinyin_config = PinyinMatchConfig::builder(notation).build();
+
+    let matcher = IbMatcher::builder(input)
+        .starts_with(true)
+        .pinyin(pinyin_config)
         .build();
 
     let stdin = std::io::stdin();
@@ -91,8 +97,8 @@ fn main() {
         if is_pure_english_path(&candidate) {
             continue;
         }
-        if matcher.is_match(&candidate) {
+        if matcher.is_match(candidate.as_str()) {
             println!("{}", candidate);
         }
     }
-    }
+}
