@@ -7,7 +7,7 @@ Completion script for pinyin, matcher based on [IbPinyinLib](https://github.com/
 **Clone the project**
 
 ```bash
-git clone https://github.com/wxiwnd/bash-pinyin-completion-rs
+git clone https://github.com/AOSC-Dev/bash-pinyin-completion-rs
 cd bash-pinyin-completion-rs
 ```
 
