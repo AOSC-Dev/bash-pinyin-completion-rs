@@ -16,6 +16,8 @@ impl<'a> TestCase<'a> {
         let mut cmd = Command::cargo_bin("bash-pinyin-completion-rs")
             .unwrap_or_else(|_| panic!("Failed to create command for test"));
 
+        cmd.env_remove("PINYIN_COMP_MODE");
+
         for (key, value) in self.envs.unwrap_or(&HashMap::new()) {
             cmd.env(key, value);
         }
