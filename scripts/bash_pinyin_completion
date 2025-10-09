@@ -12,6 +12,101 @@ fi
 # Backup the original function
 eval "function __bak_comp_compgen__call_builtin() { $(declare -f _comp_compgen__call_builtin | tail -n +2) }"
 
+# Expand environment references ("$VAR", "${VAR}") inside completion prefixes
+__expand_env_refs() {
+    local input="$1"
+    # accumulate the expanded characters here
+    local result=""
+    local len=${#input}
+    local i=0
+
+    # Walk through every character
+    while (( i < len )); do
+        local ch="${input:i:1}"
+        # Preserve escaped characters verbatim
+        # "\$HOME" stays "$HOME"
+        if [[ "$ch" == "\\" ]]; then
+            ((i++))
+            if (( i < len )); then
+                result+="${input:i:1}"
+                ((i++))
+            fi
+            continue
+        fi
+
+        # Handle environment references beginning with '$'
+        if [[ "$ch" == '$' ]]; then
+            ((i++))
+            if (( i >= len )); then
+                result+='$'
+                break
+            fi
+
+            ch="${input:i:1}"
+            # Expand braces style 
+            # "${VAR}"
+            if [[ "$ch" == '{' ]]; then
+                ((i++))
+                local start=$i
+                # Consume [A-Za-z0-9_] until we hit '}' or something else
+                while (( i < len )); do
+                    ch="${input:i:1}"
+                    if [[ "$ch" =~ [A-Za-z0-9_] ]]; then
+                        ((i++))
+                        continue
+                    fi
+                    break
+                done
+                local var_name="${input:start:i-start}"
+                if [[ -z "$var_name" ]]; then
+                    result+='$'
+                    result+='{'
+                    continue
+                fi
+                if (( i < len )) && [[ "${input:i:1}" == '}' ]]; then
+                    ((i++))
+                    # ${VAR} -> ${!VAR-} returns value or empty string.
+                    result+="${!var_name-}"
+                else
+                    result+='$'
+                    result+='{'
+                    i=$start
+                fi
+                continue
+            fi
+
+            if [[ "$ch" =~ [A-Za-z_] ]]; then
+                local start=$i
+                while (( i < len )) && [[ "${input:i:1}" =~ [A-Za-z0-9_] ]]; do
+                    ((i++))
+                done
+                local var_name="${input:start:i-start}"
+                result+="${!var_name-}"
+                continue
+            fi
+
+            # Handle positional parameters ($1) 
+            # or a few common special vars
+            if [[ "$ch" =~ [0-9@*#?] ]]; then
+                local special_name="$ch"
+                ((i++))
+                result+="${!special_name-}"
+                continue
+            fi
+
+            # Any other symbol
+            result+='$'
+            continue
+        fi
+
+        # Normal characters are copied through.
+        result+="$ch"
+        ((i++))
+    done
+
+    printf '%s' "$result"
+}
+
 
 _comp_compgen__call_builtin() {
     __bak_comp_compgen__call_builtin "$@"
@@ -85,6 +180,18 @@ _add_completion() {
     fi
     
     [[ "$dirpart" == "." && "${cur:0:2}" != "./" ]] && dirpart=""
+
+    # Expand environemnt variables
+    # dirpart_lookup: save the true path after expanded
+    # NOTE: in the end, the path prefix will be rollbacked to "snapshot".
+    local dirpart_lookup="$dirpart"
+    if [[ -n "$dirpart_lookup" && "$dirpart_lookup" == *'$'* ]]; then
+        local expanded_lookup
+        expanded_lookup="$(__expand_env_refs "$dirpart_lookup")"
+        if [[ -n "$expanded_lookup" ]]; then
+            dirpart_lookup="$expanded_lookup"
+        fi
+    fi
     
     local savedPWD="$PWD"
     local resolved_dir
@@ -99,10 +206,10 @@ _add_completion() {
         fi
     done
     
-    if [[ -n "$dirpart" ]]; then
+    if [[ -n "$dirpart_lookup" ]]; then
         # Resolve the working directory for compgen use realpath, but remember
         # the original textual prefix so completions can stay aligned with what the user typed.
-        resolved_dir="$(realpath -- "$dirpart" 2>/dev/null)"
+        resolved_dir="$(realpath -- "$dirpart_lookup" 2>/dev/null)"
         if [[ -d "$resolved_dir" ]]; then
             cd -- "$resolved_dir" 2>/dev/null || return
         else
