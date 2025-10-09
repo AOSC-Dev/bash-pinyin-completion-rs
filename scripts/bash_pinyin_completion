@@ -46,6 +46,17 @@ _add_completion() {
     eval "cur=${_cur}"
     # Save original cur (to restore later)
     local orig_cur="$cur"
+    local orig_dirpart=""
+    local stripped_orig="$orig_cur"
+    if [[ "$stripped_orig" == "'"* || "$stripped_orig" == '"'* ]]; then
+        stripped_orig="${stripped_orig:1}"
+    fi
+    if [[ "$stripped_orig" == */* ]]; then
+        orig_dirpart="${stripped_orig%/*}"
+    fi
+    if [[ "$orig_dirpart" == "." && "${stripped_orig:0:2}" != "./" ]]; then
+        orig_dirpart=""
+    fi
     
     # Check if we have the necessary variables
     if [[ -z "${_cur-}" ]] || [[ -z "${_var-}" ]]; then
@@ -109,11 +120,15 @@ _add_completion() {
     cd "$savedPWD" || return
     
     if [[ ${#pinyin_matched[@]} -gt 0 ]]; then
-        if [[ -n "$dirpart" ]]; then
+        local display_dirpart="$dirpart"
+        if [[ -n "$orig_dirpart" ]]; then
+            display_dirpart="$orig_dirpart"
+        fi
+        if [[ -n "$display_dirpart" ]]; then
             local sep="/"
-            [[ "$dirpart" == "/" ]] && sep=""
+            [[ "$display_dirpart" == "/" ]] && sep=""
             for i in "${!pinyin_matched[@]}"; do
-                pinyin_matched[$i]="${dirpart}${sep}${pinyin_matched[$i]}"
+                pinyin_matched[$i]="${display_dirpart}${sep}${pinyin_matched[$i]}"
             done
         fi
 
@@ -122,13 +137,30 @@ _add_completion() {
             orig_check="${orig_check:1}"
         fi
         if [[ "$orig_check" == ~* ]]; then
-            for i in "${!pinyin_matched[@]}"; do
-                if [[ "${pinyin_matched[$i]}" == "$HOME" ]]; then
-                    pinyin_matched[$i]="~"
-                elif [[ "${pinyin_matched[$i]}" == $HOME/* ]]; then
-                    pinyin_matched[$i]="~/${pinyin_matched[$i]#"$HOME/"}"
+            local tilde_prefix="${orig_check%%/*}"
+            local expanded_prefix=""
+            if [[ "$tilde_prefix" == "~" ]]; then
+                expanded_prefix="$HOME"
+            elif [[ "$tilde_prefix" == ~+ ]]; then
+                expanded_prefix="$PWD"
+            elif [[ "$tilde_prefix" == ~- ]]; then
+                expanded_prefix="${OLDPWD-}"
+            else
+                local tilde_user="${tilde_prefix:1}"
+                if [[ -n "$tilde_user" ]]; then
+                    expanded_prefix="$(getent passwd "$tilde_user" 2>/dev/null | cut -d: -f6)"
                 fi
-            done
+            fi
+            if [[ -n "$expanded_prefix" ]]; then
+                for i in "${!pinyin_matched[@]}"; do
+                    if [[ "${pinyin_matched[$i]}" == "$expanded_prefix" ]]; then
+                        pinyin_matched[$i]="$tilde_prefix"
+                    elif [[ "${pinyin_matched[$i]}" == "$expanded_prefix"/* ]]; then
+                        local suffix="${pinyin_matched[$i]#"$expanded_prefix/"}"
+                        pinyin_matched[$i]="$tilde_prefix/$suffix"
+                    fi
+                done
+            fi
         fi
 
         local current_results_var="current_results"
