@@ -41,13 +41,17 @@ _comp_compgen__call_builtin() {
 
 # Function to add completion results
 _add_completion() {
+    # cur: bash-completion's working value for the current word.
     local cur
 
     eval "cur=${_cur}"
-    # Save original cur (to restore later)
+    # origin_cur: the user's raw buffer text before any expansion
+    # including quotes or ~user prefixes. in other word, "snapshot".
     local orig_cur="$cur"
-    local orig_dirpart=""
+    # stripped_orig: an editable copy of orig_cur
+    # used to compute orig_dirpart without mutating the original text.
     local stripped_orig="$orig_cur"
+    local orig_dirpart=""
     if [[ "$stripped_orig" == "'"* || "$stripped_orig" == '"'* ]]; then
         stripped_orig="${stripped_orig:1}"
     fi
@@ -67,6 +71,8 @@ _add_completion() {
     
     # Skip empty
     [[ -z "$cur" ]] && return
+
+    # perform bash-completion's normal expansions.
     _expand || return 0
 
     local dirpart basepart
@@ -94,6 +100,8 @@ _add_completion() {
     done
     
     if [[ -n "$dirpart" ]]; then
+        # Resolve the working directory for compgen use realpath, but remember
+        # the original textual prefix so completions can stay aligned with what the user typed.
         resolved_dir="$(realpath -- "$dirpart" 2>/dev/null)"
         if [[ -d "$resolved_dir" ]]; then
             cd -- "$resolved_dir" 2>/dev/null || return
@@ -102,7 +110,8 @@ _add_completion() {
             return
         fi
     fi
-    
+
+    # Kernel
     local -a pinyin_matched
     if [[ "$is_dir_only" == true ]]; then
         mapfile -t pinyin_matched < <(
@@ -122,6 +131,9 @@ _add_completion() {
     if [[ ${#pinyin_matched[@]} -gt 0 ]]; then
         local display_dirpart="$dirpart"
         if [[ -n "$orig_dirpart" ]]; then
+            # When the user typed something like ~user/src, prefer their original prefix for display
+            # instead of the realpath directory we temp into.
+            # "snapshot" we saved before comes in handy here.
             display_dirpart="$orig_dirpart"
         fi
         if [[ -n "$display_dirpart" ]]; then
@@ -137,6 +149,8 @@ _add_completion() {
             orig_check="${orig_check:1}"
         fi
         if [[ "$orig_check" == ~* ]]; then
+            # Map the tilde-prefix the user entered back onto the filesystem
+            # path produced by compgen so the completion output preserves the symbolic form.
             local tilde_prefix="${orig_check%%/*}"
             local expanded_prefix=""
             if [[ "$tilde_prefix" == "~" ]]; then
@@ -148,15 +162,18 @@ _add_completion() {
             else
                 local tilde_user="${tilde_prefix:1}"
                 if [[ -n "$tilde_user" ]]; then
+                    # Find the user from passwd.
                     expanded_prefix="$(getent passwd "$tilde_user" 2>/dev/null | cut -d: -f6)"
                 fi
             fi
             if [[ -n "$expanded_prefix" ]]; then
                 for i in "${!pinyin_matched[@]}"; do
                     if [[ "${pinyin_matched[$i]}" == "$expanded_prefix" ]]; then
+                        # Exact home directory.
                         pinyin_matched[$i]="$tilde_prefix"
                     elif [[ "${pinyin_matched[$i]}" == "$expanded_prefix"/* ]]; then
                         local suffix="${pinyin_matched[$i]#"$expanded_prefix/"}"
+                        # Join path under the user home.
                         pinyin_matched[$i]="$tilde_prefix/$suffix"
                     fi
                 done
