@@ -92,7 +92,12 @@ fn main() {
     let stdin = std::io::stdin();
     let reader = BufReader::new(stdin.lock());
     for line_result in reader.lines() {
-        let candidate = line_result.unwrap().trim_end().to_string();
+        let candidate = match line_result {
+            Ok(line) => line.trim_end().to_string(),
+            Err(_) => {
+                continue;
+            }
+        };
         // Ignore Pure English Path
         if is_pure_english_path(&candidate) {
             continue;
