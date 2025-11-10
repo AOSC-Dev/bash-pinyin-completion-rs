@@ -126,6 +126,26 @@ _comp_compgen__call_builtin() {
         esac
     done
     
+    # Also check if -W option is used with ${files[@]} or similar array expansion
+    # which is a common pattern for file completion
+    if [[ "$is_file_completion" == false ]]; then
+        local i=0
+        while [[ $i -lt ${#compgen_args[@]} ]]; do
+            if [[ "${compgen_args[$i]}" == "-W" ]]; then
+                local next_idx=$((i + 1))
+                if [[ $next_idx -lt ${#compgen_args[@]} ]]; then
+                    local word_arg="${compgen_args[$next_idx]}"
+                    # Check if it contains ${files or similar array patterns
+                    if [[ "$word_arg" == *'${files'* ]] || [[ "$word_arg" == *'${toks'* ]] || [[ "$word_arg" == *'$files'* ]] || [[ "$word_arg" == *'$toks'* ]]; then
+                        is_file_completion=true
+                        break
+                    fi
+                fi
+            fi
+            ((i++))
+        done
+    fi
+    
     # If this looks like file completion, add pinyin matches
     if [[ "$is_file_completion" == true ]]; then
         _add_completion "$@"
