@@ -117,13 +117,29 @@ _comp_compgen__call_builtin() {
     local compgen_args=("$@")
     
     # Check for file completion indicators
-    for arg in "${compgen_args[@]}"; do
+    local idx=0
+    while [[ $idx -lt ${#compgen_args[@]} ]]; do
+        local arg="${compgen_args[$idx]}"
         case "$arg" in
-            -f|-d|-A|file|directory)
+            -f|-d|-Afile|-Adirectory)
+                is_file_completion=true
+                break
+                ;;
+            -A)
+                if (( idx + 1 < ${#compgen_args[@]} )); then
+                    local next_arg="${compgen_args[$((idx + 1))]}"
+                    if [[ "$next_arg" == "file" || "$next_arg" == "directory" ]]; then
+                        is_file_completion=true
+                        break
+                    fi
+                fi
+                ;;
+            file|directory)
                 is_file_completion=true
                 break
                 ;;
         esac
+        ((idx++))
     done
     
     # Also check if -W option is used with ${files[@]} or similar array expansion
