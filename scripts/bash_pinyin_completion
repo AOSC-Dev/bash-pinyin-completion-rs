@@ -12,6 +12,27 @@ fi
 # Backup the original function
 eval "function __bak_comp_compgen__call_builtin() { $(declare -f _comp_compgen__call_builtin | tail -n +2) }"
 
+# When Bash falls back to the minimal default completion handler (typically
+# triggered for commands invoked via path prefixes such as ./foo or ../bar),
+# bash-completion stops before calling compgen and our pinyin hook never runs.
+# Wrap that fallback so path-based commands still go through _filedir and, in
+# turn, our enhanced matcher.
+if declare -F _comp_complete_minimal &>/dev/null && \
+   ! declare -F __bak_comp_complete_minimal &>/dev/null; then
+    eval "function __bak_comp_complete_minimal() { $(declare -f _comp_complete_minimal | tail -n +2) }"
+
+    _comp_complete_minimal() {
+        if [[ ${COMP_WORDS[0]+_} ]] && [[ ${COMP_WORDS[0]} == */* ]]; then
+            local cur prev words cword comp_args
+            _comp_initialize -- "$@" || return
+            _filedir
+            return
+        fi
+
+        __bak_comp_complete_minimal "$@"
+    }
+fi
+
 # Expand environment references ("$VAR", "${VAR}") inside completion prefixes
 __expand_env_refs() {
     local input="$1"
