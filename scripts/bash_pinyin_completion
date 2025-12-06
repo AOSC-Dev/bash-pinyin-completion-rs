@@ -33,6 +33,53 @@ if declare -F _comp_complete_minimal &>/dev/null && \
     }
 fi
 
+# Decide whether a generator invoked via _comp_xfunc appears to provide
+# local filesystem candidates.
+_pinyin_is_local_file_generator() {
+    local generator="$1"
+    [[ -z "$generator" ]] && return 1
+
+    case "$generator" in
+        compgen_local_files|compgen_local_dirs|compgen_local_filedirs|compgen_filedir|compgen_filedirs)
+            return 0 ;;
+        compgen_local_*|*_local_files|*_local_dirs)
+            return 0 ;;
+    esac
+
+    [[ "$generator" == *local*file* ]] && return 0
+    [[ "$generator" == *file*local* ]] && return 0
+
+    return 1
+}
+
+# Hook _comp_xfunc so any command-level generator that looks like it enumerates
+# local files automatically benefits from the pinyin matcher.
+if declare -F _comp_xfunc &>/dev/null && \
+   ! declare -F __bak_comp_xfunc &>/dev/null; then
+    eval "function __bak_comp_xfunc() { $(declare -f _comp_xfunc | tail -n +2) }"
+
+    _comp_xfunc() {
+        local -a __pinyin_args=("$@")
+        __bak_comp_xfunc "${__pinyin_args[@]}"
+        local status=$?
+
+        local generator="${__pinyin_args[1]-}"
+        if _pinyin_is_local_file_generator "$generator"; then
+            local -a dir_flag=()
+            local arg
+            for arg in "${__pinyin_args[@]:2}"; do
+                if [[ "$arg" == "-d" ]]; then
+                    dir_flag=('-d')
+                    break
+                fi
+            done
+            _add_completion "${dir_flag[@]}"
+        fi
+
+        return $status
+    }
+fi
+
 # Expand environment references ("$VAR", "${VAR}") inside completion prefixes
 __expand_env_refs() {
     local input="$1"
@@ -196,7 +243,13 @@ _add_completion() {
     # cur: bash-completion's working value for the current word.
     local cur
 
-    eval "cur=${_cur}"
+    if [[ -n ${_cur-} ]]; then
+        eval "cur=${_cur}"
+    elif [[ -n ${COMP_WORDS+x} && -n ${COMP_CWORD+x} ]]; then
+        cur="${COMP_WORDS[COMP_CWORD]-}"
+    else
+        return
+    fi
     # origin_cur: the user's raw buffer text before any expansion
     # including quotes or ~user prefixes. in other word, "snapshot".
     local orig_cur="$cur"
@@ -215,11 +268,12 @@ _add_completion() {
     fi
     
     # Check if we have the necessary variables
-    if [[ -z "${_cur-}" ]] || [[ -z "${_var-}" ]]; then
-        return
+    local var_name
+    if [[ -n ${_var-} ]]; then
+        var_name="$_var"
+    else
+        var_name="COMPREPLY"
     fi
-    
-    local var_name="$_var"
     
     # Skip empty
     [[ -z "$cur" ]] && return
