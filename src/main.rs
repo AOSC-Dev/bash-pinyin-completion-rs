@@ -1,6 +1,7 @@
 use ib_matcher::{
-    matcher::{IbMatcher, PinyinMatchConfig},
-    pinyin::{PinyinNotation},
+    matcher::{IbMatcher, PinyinMatchConfig, RomajiMatchConfig},
+    pinyin::PinyinNotation,
+    romaji::HepburnRomanizer,
 };
 use std::env;
 use std::io::{BufRead, BufReader};
@@ -72,6 +73,28 @@ fn parse_pinyin_notation_env() -> PinyinNotation {
     notation
 }
 
+/// Returns the romaji mode: None (disabled), Some(false) (fast mode), Some(true) (full mode with word dictionary)
+fn parse_romaji_mode() -> Option<bool> {
+    let env_val = env::var("PINYIN_COMP_MODE").unwrap_or_default();
+    let mut romaji_mode = None;
+    for mode in env_val.split(',') {
+        match mode.trim() {
+            // Fast mode: kana + kanji only (~19ms init)
+            "Romaji" => {
+                if romaji_mode.is_none() {
+                    romaji_mode = Some(false);
+                }
+            }
+            // Full mode: includes word dictionary (~276ms init)
+            "RomajiFull" => {
+                romaji_mode = Some(true);
+            }
+            _ => {}
+        }
+    }
+    romaji_mode
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     // Print usage
@@ -84,10 +107,39 @@ fn main() {
     let notation = parse_pinyin_notation_env();
     let pinyin_config = PinyinMatchConfig::builder(notation).build();
 
-    let matcher = IbMatcher::builder(input)
-        .starts_with(true)
-        .pinyin(pinyin_config)
-        .build();
+    // Build romaji config based on mode
+    // - None: disabled
+    // - Some(false): fast mode with kana + kanji only (~19ms)
+    // - Some(true): full mode with word dictionary (~276ms)
+    let romaji_mode = parse_romaji_mode();
+    let romanizer = match romaji_mode {
+        Some(true) => {
+            // Full mode: uses default() which includes word dictionary
+            Some(HepburnRomanizer::default())
+        }
+        Some(false) => {
+            // Fast mode: only kana and kanji, no word dictionary
+            Some(HepburnRomanizer::builder().kana(true).kanji(true).build())
+        }
+        None => None,
+    };
+
+    let romaji_config = romanizer.as_ref().map(|r| {
+        RomajiMatchConfig::builder().romanizer(r).build()
+    });
+
+    let matcher = if let Some(ref romaji) = romaji_config {
+        IbMatcher::builder(input)
+            .starts_with(true)
+            .pinyin(pinyin_config)
+            .romaji(romaji.shallow_clone())
+            .build()
+    } else {
+        IbMatcher::builder(input)
+            .starts_with(true)
+            .pinyin(pinyin_config)
+            .build()
+    };
 
     let stdin = std::io::stdin();
     let reader = BufReader::new(stdin.lock());
