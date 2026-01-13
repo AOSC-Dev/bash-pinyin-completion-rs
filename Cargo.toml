@@ -4,8 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ib-matcher = { version = "0.4.0", features = ["pinyin"] }
+ib-matcher = { version = "0.4.0", features = ["pinyin", "romaji"] }
 regex = "1.11.1"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
 
 [dev-dependencies]
 assert_cmd = "2.0.17"
