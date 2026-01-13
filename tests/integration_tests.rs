@@ -341,3 +341,30 @@ fn test_romaji_partial_match() {
     }
     .run();
 }
+
+#[test]
+fn test_romaji_full_mode() {
+    use std::collections::HashMap;
+    let mut env_vars = HashMap::new();
+    env_vars.insert("PINYIN_COMP_MODE", "RomajiFull");
+
+    // Test word matching: 今日 (kyou) - only available in full mode
+    TestCase {
+        envs: Some(&env_vars),
+        args: vec!["kyou"],
+        stdin: "今日\n明日\n昨日\n",
+        stdout: "今日\n",
+        ..Default::default()
+    }
+    .run();
+
+    // Test basic kana matching still works in full mode
+    TestCase {
+        envs: Some(&env_vars),
+        args: vec!["ohayo"],
+        stdin: "おはよう\nこんにちは\n",
+        stdout: "おはよう\n",
+        ..Default::default()
+    }
+    .run();
+}

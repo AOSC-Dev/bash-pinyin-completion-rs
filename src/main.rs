@@ -73,14 +73,26 @@ fn parse_pinyin_notation_env() -> PinyinNotation {
     notation
 }
 
-fn is_romaji_enabled() -> bool {
+/// Returns the romaji mode: None (disabled), Some(false) (fast mode), Some(true) (full mode with word dictionary)
+fn parse_romaji_mode() -> Option<bool> {
     let env_val = env::var("PINYIN_COMP_MODE").unwrap_or_default();
+    let mut romaji_mode = None;
     for mode in env_val.split(',') {
-        if mode.trim() == "Romaji" {
-            return true;
+        match mode.trim() {
+            // Fast mode: kana + kanji only (~19ms init)
+            "Romaji" => {
+                if romaji_mode.is_none() {
+                    romaji_mode = Some(false);
+                }
+            }
+            // Full mode: includes word dictionary (~276ms init)
+            "RomajiFull" => {
+                romaji_mode = Some(true);
+            }
+            _ => {}
         }
     }
-    false
+    romaji_mode
 }
 
 fn main() {
@@ -95,13 +107,21 @@ fn main() {
     let notation = parse_pinyin_notation_env();
     let pinyin_config = PinyinMatchConfig::builder(notation).build();
 
-    // Build romaji config only once and reuse it for performance
-    // HepburnRomanizer initialization is expensive, so we create it once
-    let romaji_enabled = is_romaji_enabled();
-    let romanizer = if romaji_enabled {
-        Some(HepburnRomanizer::default())
-    } else {
-        None
+    // Build romaji config based on mode
+    // - None: disabled
+    // - Some(false): fast mode with kana + kanji only (~19ms)
+    // - Some(true): full mode with word dictionary (~276ms)
+    let romaji_mode = parse_romaji_mode();
+    let romanizer = match romaji_mode {
+        Some(true) => {
+            // Full mode: uses default() which includes word dictionary
+            Some(HepburnRomanizer::default())
+        }
+        Some(false) => {
+            // Fast mode: only kana and kanji, no word dictionary
+            Some(HepburnRomanizer::builder().kana(true).kanji(true).build())
+        }
+        None => None,
     };
 
     let romaji_config = romanizer.as_ref().map(|r| {
