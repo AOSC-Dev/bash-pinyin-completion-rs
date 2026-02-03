@@ -74,21 +74,14 @@ export PINYIN_COMP_MODE="Quanpin,ShuangpinXiaohe"
 
 `bash-pinyin-completion-rs` also supports Japanese romaji (ローマ字) completion using [Hepburn romanization](https://en.wikipedia.org/wiki/Hepburn_romanization).
 
-Two modes are available:
+Romaji now has a single full mode (word dictionary included):
 
-- **Romaji**: Fast mode (~37ms startup) - supports kana and individual kanji readings. E.g., "ohayo" for "おはよう", "jojo" for "ジョジョ"
-- **RomajiFull**: Full mode (~374ms startup) - includes word dictionary for compound kanji words. E.g., "kyou" for "今日"
+- **Romaji**: Full mode with kana, kanji, and compound word readings. E.g., "kyou" for "今日", "ohayo" for "おはよう", "jojo" for "ジョジョ".
 
-To enable Japanese romaji completion (fast mode, recommended):
+Enable Japanese romaji completion:
 
 ```bash
 export PINYIN_COMP_MODE="Romaji"
-```
-
-To enable full romaji mode with word dictionary:
-
-```bash
-export PINYIN_COMP_MODE="RomajiFull"
 ```
 
 To use both Pinyin and Romaji together:
@@ -96,12 +89,6 @@ To use both Pinyin and Romaji together:
 ```bash
 export PINYIN_COMP_MODE="Quanpin,Romaji"
 ```
-
-### Notes on Romaji Mode
-
-- **Romaji** (fast mode): Supports hiragana, katakana, and individual kanji with known readings. Recommended for most users.
-- **RomajiFull** (full mode): Additionally supports compound word readings (e.g., 今日→kyou). Has longer startup time due to word dictionary loading.
-- The Romaji dictionary adds approximately 4.8 MiB to the binary size.
 
 ## Bug report
 

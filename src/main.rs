@@ -5,6 +5,7 @@ use ib_matcher::{
 };
 use std::env;
 use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
 
 fn is_pure_english_path(s: &str) -> bool {
     // Consider a path "pure English" if every character is within a conservative
@@ -73,26 +74,56 @@ fn parse_pinyin_notation_env() -> PinyinNotation {
     notation
 }
 
-/// Returns the romaji mode: None (disabled), Some(false) (fast mode), Some(true) (full mode with word dictionary)
-fn parse_romaji_mode() -> Option<bool> {
+/// Returns whether romaji is enabled (single full mode).
+fn parse_romaji_enabled() -> bool {
     let env_val = env::var("PINYIN_COMP_MODE").unwrap_or_default();
-    let mut romaji_mode = None;
     for mode in env_val.split(',') {
-        match mode.trim() {
-            // Fast mode: kana + kanji only (~19ms init)
-            "Romaji" => {
-                if romaji_mode.is_none() {
-                    romaji_mode = Some(false);
-                }
-            }
-            // Full mode: includes word dictionary (~276ms init)
-            "RomajiFull" => {
-                romaji_mode = Some(true);
-            }
-            _ => {}
-        }
+        if mode.trim() == "Romaji" { return true }
     }
-    romaji_mode
+    false
+}
+
+/// Get the cache directory path, respecting XDG_CACHE_HOME
+fn get_cache_dir() -> Option<PathBuf> {
+    // Check for custom cache path first
+    if let Ok(cache_path) = env::var("PINYIN_COMP_CACHE_DIR") {
+        return Some(PathBuf::from(cache_path));
+    }
+    
+    // Use XDG_CACHE_HOME or default to ~/.cache
+    let cache_home = env::var("XDG_CACHE_HOME")
+        .map(PathBuf::from)
+        .or_else(|_| env::var("HOME").map(|h| PathBuf::from(h).join(".cache")))
+        .ok()?;
+    
+    Some(cache_home.join("bash-pinyin-completion"))
+}
+
+/// Get the cache file path for romaji
+fn get_cache_path() -> Option<PathBuf> {
+    let cache_dir = get_cache_dir()?;
+    Some(cache_dir.join("romanizer.cache"))
+}
+
+/// Create or load a HepburnRomanizer, using cache when available
+fn get_or_create_romanizer() -> HepburnRomanizer {
+    let (kana, kanji, word) = (true, true, true);
+    
+    // Use upstream builder caching API for elegant cache handling
+    if let Some(cache_path) = get_cache_path() {
+        HepburnRomanizer::builder()
+            .kana(kana)
+            .kanji(kanji)
+            .word(word)
+            .build_cached(cache_path)
+    } else {
+        // Fallback without cache
+        HepburnRomanizer::builder()
+            .kana(kana)
+            .kanji(kanji)
+            .word(word)
+            .build()
+    }
 }
 
 fn main() {
@@ -108,21 +139,10 @@ fn main() {
     let pinyin_config = PinyinMatchConfig::builder(notation).build();
 
     // Build romaji config based on mode
-    // - None: disabled
-    // - Some(false): fast mode with kana + kanji only (~19ms)
-    // - Some(true): full mode with word dictionary (~276ms)
-    let romaji_mode = parse_romaji_mode();
-    let romanizer = match romaji_mode {
-        Some(true) => {
-            // Full mode: uses default() which includes word dictionary
-            Some(HepburnRomanizer::default())
-        }
-        Some(false) => {
-            // Fast mode: only kana and kanji, no word dictionary
-            Some(HepburnRomanizer::builder().kana(true).kanji(true).build())
-        }
-        None => None,
-    };
+    // - disabled if not requested
+    // - enabled: full mode with word dictionary (cached for startup speed)
+    let romaji_enabled = parse_romaji_enabled();
+    let romanizer = romaji_enabled.then(get_or_create_romanizer);
 
     let romaji_config = romanizer.as_ref().map(|r| {
         RomajiMatchConfig::builder().romanizer(r).build()

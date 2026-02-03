@@ -236,9 +236,9 @@ checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
 
 [[package]]
 name = "ib-matcher"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5319f5e36b549be48c5e3d05f6efd73eec21cc32d8e63e1ec6cf9c7e9325a9dc"
+checksum = "0e38169336c630c4c43316c76aa3bee956d625ada4055803e3de5a285ca6a6ee"
 dependencies = [
  "aho-corasick",
  "arraystring",
@@ -254,9 +254,9 @@ dependencies = [
 
 [[package]]
 name = "ib-romaji"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bbdac9da9f43ee069474f5124090403a3993add9541787813d8a3f55fbf022d"
+checksum = "c9482c53ad0b38d11f7877033167a9e99e2b73230efb4a36cc2167335f6796f0"
 dependencies = [
  "bon",
  "daachorse",
