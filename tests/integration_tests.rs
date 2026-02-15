@@ -315,6 +315,81 @@ fn test_romaji_with_pinyin_mode() {
 }
 
 #[test]
+fn test_romaji_with_pinyin_mode_order_sensitive() {
+    use std::collections::HashMap;
+
+    let mut zrm_first = HashMap::new();
+    zrm_first.insert(
+        "PINYIN_COMP_MODE",
+        "Romaji,Quanpin,ShuangpinZrm,ShuangpinXiaohe",
+    );
+
+    // ShuangpinZrm comes first, so Zrm code should match.
+    TestCase {
+        envs: Some(&zrm_first),
+        args: vec!["udpn"],
+        stdin: "双拼\n日本\n",
+        stdout: "双拼\n",
+        ..Default::default()
+    }
+    .run();
+
+    // Xiaohe code should not match when Zrm is selected.
+    TestCase {
+        envs: Some(&zrm_first),
+        args: vec!["ulpb"],
+        stdin: "双拼\n日本\n",
+        stdout: "",
+        ..Default::default()
+    }
+    .run();
+
+    // Romaji matching still works in mixed mode.
+    TestCase {
+        envs: Some(&zrm_first),
+        args: vec!["nihon"],
+        stdin: "双拼\n日本\n",
+        stdout: "日本\n",
+        ..Default::default()
+    }
+    .run();
+
+    let mut xiaohe_first = HashMap::new();
+    xiaohe_first.insert(
+        "PINYIN_COMP_MODE",
+        "Romaji,Quanpin,ShuangpinXiaohe,ShuangpinZrm",
+    );
+
+    // Reversing mode order switches the active shuangpin scheme.
+    TestCase {
+        envs: Some(&xiaohe_first),
+        args: vec!["udpn"],
+        stdin: "双拼\n日本\n",
+        stdout: "",
+        ..Default::default()
+    }
+    .run();
+
+    TestCase {
+        envs: Some(&xiaohe_first),
+        args: vec!["ulpb"],
+        stdin: "双拼\n日本\n",
+        stdout: "双拼\n",
+        ..Default::default()
+    }
+    .run();
+
+    TestCase {
+        envs: Some(&xiaohe_first),
+        args: vec!["nihon"],
+        stdin: "双拼\n日本\n",
+        stdout: "日本\n",
+        ..Default::default()
+    }
+    .run();
+}
+
+#[test]
 fn test_romaji_partial_match() {
     use std::collections::HashMap;
     let mut env_vars = HashMap::new();
