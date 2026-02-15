@@ -1,6 +1,6 @@
 # bash-pinyin-completion-rs
 
-Completion script for pinyin, matcher based on [IbPinyinLib](https://github.com/Chaoses-Ib/IbPinyinLib)
+Completion script for pinyin and romaji, matcher based on [IbPinyinLib](https://github.com/Chaoses-Ib/IbPinyinLib)
 
 ## Installation
 
@@ -69,6 +69,26 @@ export PINYIN_COMP_MODE="Quanpin,ShuangpinXiaohe"
   but will be disabled if any Shuangpin schema is enabled.
 - Mixing Shuangpin schemas is not supported -
   if multiple Shuangpin schemas are enabled, only the first one will take effect.
+
+## Configuring Japanese Romaji
+
+`bash-pinyin-completion-rs` also supports Japanese romaji (ローマ字) completion using [Hepburn romanization](https://en.wikipedia.org/wiki/Hepburn_romanization).
+
+Romaji now has a single full mode (word dictionary included):
+
+- **Romaji**: Full mode with kana, kanji, and compound word readings. E.g., "kyou" for "今日", "ohayo" for "おはよう", "jojo" for "ジョジョ".
+
+Enable Japanese romaji completion:
+
+```bash
+export PINYIN_COMP_MODE="Romaji"
+```
+
+To use both Pinyin and Romaji together:
+
+```bash
+export PINYIN_COMP_MODE="Quanpin,Romaji"
+```
 
 ## Bug report
 

@@ -259,3 +259,178 @@ fn test_whitespace_handling() {
     }
     .run();
 }
+
+#[test]
+fn test_romaji_mode() {
+    use std::collections::HashMap;
+    let mut env_vars = HashMap::new();
+    env_vars.insert("PINYIN_COMP_MODE", "Romaji");
+
+    // Test basic romaji matching for hiragana
+    TestCase {
+        envs: Some(&env_vars),
+        args: vec!["ohayo"],
+        stdin: "おはよう\nこんにちは\nさようなら\n",
+        stdout: "おはよう\n",
+        ..Default::default()
+    }
+    .run();
+
+    // Test romaji matching for katakana
+    TestCase {
+        envs: Some(&env_vars),
+        args: vec!["jojo"],
+        stdin: "ジョジョ\nナルト\nワンピース\n",
+        stdout: "ジョジョ\n",
+        ..Default::default()
+    }
+    .run();
+}
+
+#[test]
+fn test_romaji_with_pinyin_mode() {
+    use std::collections::HashMap;
+    let mut env_vars = HashMap::new();
+    env_vars.insert("PINYIN_COMP_MODE", "Quanpin,Romaji");
+
+    // Test pinyin matching still works
+    TestCase {
+        envs: Some(&env_vars),
+        args: vec!["zhongguo"],
+        stdin: "中国\n日本\n",
+        stdout: "中国\n",
+        ..Default::default()
+    }
+    .run();
+
+    // Test romaji matching
+    TestCase {
+        envs: Some(&env_vars),
+        args: vec!["nihon"],
+        stdin: "中国\n日本\n",
+        stdout: "日本\n",
+        ..Default::default()
+    }
+    .run();
+}
+
+#[test]
+fn test_romaji_with_pinyin_mode_order_sensitive() {
+    use std::collections::HashMap;
+
+    let mut zrm_first = HashMap::new();
+    zrm_first.insert(
+        "PINYIN_COMP_MODE",
+        "Romaji,Quanpin,ShuangpinZrm,ShuangpinXiaohe",
+    );
+
+    // ShuangpinZrm comes first, so Zrm code should match.
+    TestCase {
+        envs: Some(&zrm_first),
+        args: vec!["udpn"],
+        stdin: "双拼\n日本\n",
+        stdout: "双拼\n",
+        ..Default::default()
+    }
+    .run();
+
+    // Xiaohe code should not match when Zrm is selected.
+    TestCase {
+        envs: Some(&zrm_first),
+        args: vec!["ulpb"],
+        stdin: "双拼\n日本\n",
+        stdout: "",
+        ..Default::default()
+    }
+    .run();
+
+    // Romaji matching still works in mixed mode.
+    TestCase {
+        envs: Some(&zrm_first),
+        args: vec!["nihon"],
+        stdin: "双拼\n日本\n",
+        stdout: "日本\n",
+        ..Default::default()
+    }
+    .run();
+
+    let mut xiaohe_first = HashMap::new();
+    xiaohe_first.insert(
+        "PINYIN_COMP_MODE",
+        "Romaji,Quanpin,ShuangpinXiaohe,ShuangpinZrm",
+    );
+
+    // Reversing mode order switches the active shuangpin scheme.
+    TestCase {
+        envs: Some(&xiaohe_first),
+        args: vec!["udpn"],
+        stdin: "双拼\n日本\n",
+        stdout: "",
+        ..Default::default()
+    }
+    .run();
+
+    TestCase {
+        envs: Some(&xiaohe_first),
+        args: vec!["ulpb"],
+        stdin: "双拼\n日本\n",
+        stdout: "双拼\n",
+        ..Default::default()
+    }
+    .run();
+
+    TestCase {
+        envs: Some(&xiaohe_first),
+        args: vec!["nihon"],
+        stdin: "双拼\n日本\n",
+        stdout: "日本\n",
+        ..Default::default()
+    }
+    .run();
+}
+
+#[test]
+fn test_romaji_partial_match() {
+    use std::collections::HashMap;
+    let mut env_vars = HashMap::new();
+    env_vars.insert("PINYIN_COMP_MODE", "Romaji");
+
+    // Test romaji prefix matching (starts_with is already enabled)
+    // "konosubarashiisekaini" matches "この素晴らしい世界に" as a prefix
+    TestCase {
+        envs: Some(&env_vars),
+        args: vec!["kono"],
+        stdin: "この素晴らしい世界に祝福を\nあの花\n",
+        stdout: "この素晴らしい世界に祝福を\n",
+        ..Default::default()
+    }
+    .run();
+
+    // Test another prefix matching
+    TestCase {
+        envs: Some(&env_vars),
+        args: vec!["ano"],
+        stdin: "この素晴らしい世界に祝福を\nあの花\n",
+        stdout: "あの花\n",
+        ..Default::default()
+    }
+    .run();
+}
+
+// Full mode is now the only romaji mode (Romaji alias).
+#[test]
+fn test_romaji_full_word_support() {
+    use std::collections::HashMap;
+    let mut env_vars = HashMap::new();
+    env_vars.insert("PINYIN_COMP_MODE", "Romaji");
+
+    // Test word matching: 今日 (kyou) - available in the single Romaji mode
+    TestCase {
+        envs: Some(&env_vars),
+        args: vec!["kyou"],
+        stdin: "今日\n明日\n昨日\n",
+        stdout: "今日\n",
+        ..Default::default()
+    }
+    .run();
+}
